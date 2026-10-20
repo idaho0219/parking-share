@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
   <meta content="mobile_tab" name="shell-type"/>
-  <title>파킹셰어 - Smart Parking Platform (Live Google Map)</title>
+  <title>파킹셰어 - Smart Parking Platform (Live Google Map & Interactive Visual Floor Plan)</title>
   
   <!-- Fonts & Material Symbols -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
@@ -42,6 +42,24 @@
     }
     .marker-active-bounce {
       animation: pin-float 1.8s ease-in-out infinite;
+    }
+
+    /* Parking Slot Custom Visual Elements */
+    .parking-bay {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .parking-bay:hover {
+      transform: translateY(-2px);
+    }
+    
+    /* Vehicle entry animation */
+    @keyframes car-enter {
+      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .car-animated {
+      animation: car-enter 0.3s ease-out forwards;
     }
 
     /* Hide Google Maps default info box clutter */
@@ -95,7 +113,7 @@
     };
   </script>
 
-  <!-- Google Maps JavaScript API with User Key -->
+  <!-- Google Maps JavaScript API -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCjFuuVJwILPxT91ZUnn_J5x0AFUPfqnkM&libraries=places,geometry&callback=initMap" async defer></script>
 </head>
 
@@ -131,7 +149,7 @@
     <div id="page1" class="page-section active w-full">
       <div class="flex flex-col w-full relative select-none">
         
-        <!-- Top Floating Search Bar & Horizontal Filter Chips -->
+        <!-- Top Search Bar & Filter Chips -->
         <div class="px-margin pt-3 pb-2 z-30 flex flex-col gap-2.5 bg-gradient-to-b from-surface via-surface/95 to-transparent">
           <form class="w-full bg-white shadow-[0_8px_24px_-4px_rgba(19,27,46,0.12)] rounded-2xl px-4 py-2.5 flex items-center gap-2 transition-all border border-slate-200/80 focus-within:border-primary focus-within:shadow-[0_8px_30px_rgba(0,55,176,0.18)]" onsubmit="handleSearch(event)">
             <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings: 'FILL' 1;">search</span>
@@ -145,7 +163,6 @@
             </button>
           </form>
 
-          <!-- Filter Chips Scroll Container -->
           <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5" id="filter-chip-container">
             <button class="filter-btn active-chip flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all" data-filter="all" onclick="setFilter('all', this)" type="button">
               <span class="material-symbols-outlined text-[15px]">done</span>
@@ -170,13 +187,10 @@
           </div>
         </div>
 
-        <!-- REAL GOOGLE MAP VIEWPORT CONTAINER -->
+        <!-- GOOGLE MAP CANVAS -->
         <div class="relative w-full h-[480px] overflow-hidden bg-slate-100 shadow-inner border-y border-slate-200">
-          
-          <!-- Google Map Mounting Div -->
           <div id="google-map-canvas" class="w-full h-full"></div>
 
-          <!-- Live Map Overlay Info Badge & Color Status Legend -->
           <div class="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2">
             <div class="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg text-xs font-bold text-slate-800 flex items-center gap-2 border border-slate-200/80">
               <span class="relative flex h-2.5 w-2.5">
@@ -198,7 +212,6 @@
             </div>
           </div>
 
-          <!-- Map Quick Action Floating Buttons -->
           <div class="absolute right-4 top-4 z-20 flex flex-col gap-2">
             <button id="gps-btn" onclick="recenterLocation()" class="w-10 h-10 rounded-2xl bg-white shadow-xl flex items-center justify-center text-slate-700 hover:text-blue-600 active:scale-90 transition-all border border-slate-200/80" type="button" title="현재 위치">
               <span id="gps-icon" class="material-symbols-outlined text-[22px]">my_location</span>
@@ -236,7 +249,6 @@
               </div>
             </div>
 
-            <!-- Price & Action Row -->
             <div class="flex items-center justify-between pt-2 border-t border-slate-100">
               <div class="flex items-baseline gap-1">
                 <span class="text-xl font-black text-slate-900" id="card-price">₩2,000</span>
@@ -260,53 +272,128 @@
 
     <div id="page2" class="page-section w-full">
       <div class="px-margin pt-3 flex flex-col gap-3">
-        <div class="bg-white rounded-3xl p-5 shadow-lg border border-slate-100 flex flex-col gap-3">
+        
+        <!-- Floor Header & Layer Filter -->
+        <div class="bg-white rounded-3xl p-5 shadow-lg border border-slate-100 flex flex-col gap-4">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h2 class="text-base font-bold text-slate-900" id="page2-title">강남 센트럴타워 지하주차장</h2>
-              <p class="text-xs text-slate-500">실시간 B2층 주차 슬롯 점유 현황</p>
+              <div class="flex items-center gap-1.5">
+                <h2 class="text-base font-extrabold text-slate-900" id="page2-title">강남 센트럴타워 지하주차장</h2>
+                <span class="material-symbols-outlined text-[18px] text-blue-600">verified</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5" id="floor-subtitle">실시간 B2층 주차 슬롯 점유 현황 (CCTV LiDAR 연동)</p>
             </div>
-            <div class="flex items-center gap-2 text-xs text-slate-500">
-              <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span><span>빈자리</span></div>
-              <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-slate-300"></span><span>점유중</span></div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-4 gap-2.5 my-2">
-            <div class="flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-100 min-h-[85px] opacity-60">
-              <span class="text-xs font-bold text-slate-600">A-01</span>
-              <span class="material-symbols-outlined text-[26px] text-slate-400">directions_car</span>
-              <span class="text-[10px] text-slate-400 font-bold">주차중</span>
-            </div>
-
-            <button class="slot-select relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-emerald-500 text-white shadow-md min-h-[85px] ring-2 ring-emerald-600" onclick="selectSlot('A-02', 'B2층 A-02 구역')" type="button">
-              <span class="text-xs font-bold">A-02</span>
-              <span class="material-symbols-outlined text-[24px]">check_circle</span>
-              <span class="text-[9px] bg-white text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">선택됨</span>
-            </button>
-
-            <button class="slot-select flex flex-col items-center justify-between p-2.5 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 min-h-[85px]" onclick="selectSlot('A-03', 'B2층 A-03 구역')" type="button">
-              <span class="text-xs font-bold">A-03</span>
-              <span class="material-symbols-outlined text-[24px] text-emerald-600">local_parking</span>
-              <span class="text-[10px] text-emerald-600 font-bold">빈자리</span>
-            </button>
-
-            <div class="flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-100 min-h-[85px] opacity-60">
-              <span class="text-xs font-bold text-slate-600">A-04</span>
-              <span class="material-symbols-outlined text-[26px] text-slate-400">directions_car</span>
-              <span class="text-[10px] text-slate-400 font-bold">주차중</span>
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl text-xs font-bold">
+              <button id="floor-b1-btn" onclick="switchFloor('B1')" class="px-3 py-1 rounded-xl text-slate-600 hover:text-slate-900 transition-all" type="button">B1층</button>
+              <button id="floor-b2-btn" onclick="switchFloor('B2')" class="px-3 py-1 rounded-xl bg-white text-blue-600 shadow-sm transition-all" type="button">B2층</button>
             </div>
           </div>
 
-          <div class="bg-slate-50 p-4 rounded-2xl flex items-center justify-between border border-slate-100">
-            <div class="flex flex-col">
-              <span class="text-[10px] font-bold text-blue-600 tracking-wider uppercase">선택한 주차 구역</span>
-              <span class="text-sm font-bold text-slate-900" id="selected-spot-title">B2층 A-02 구역</span>
+          <!-- Floor Summary Stats Banner -->
+          <div class="grid grid-cols-4 gap-2">
+            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+              <span class="text-[10px] text-blue-600 font-bold">전체 슬롯</span>
+              <span class="text-base font-black text-blue-900" id="floor-total-count">16면</span>
             </div>
-            <button class="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all hover:bg-blue-700" onclick="navigateToPage('page4')" type="button">
-              입차 선점 예약
-            </button>
+            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+              <span class="text-[10px] text-emerald-600 font-bold">빈 슬롯</span>
+              <span class="text-base font-black text-emerald-800" id="floor-vacant-count">7면</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+              <span class="text-[10px] text-amber-600 font-bold">특수/전기</span>
+              <span class="text-base font-black text-amber-800" id="floor-ev-count">3면</span>
+            </div>
+            <div class="bg-rose-50 border border-rose-100 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+              <span class="text-[10px] text-rose-600 font-bold">점유중</span>
+              <span class="text-base font-black text-rose-800" id="floor-occupied-count">9면</span>
+            </div>
           </div>
+
+          <!-- Zone Filter Tabs -->
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+            <button onclick="filterZone('ALL', this)" class="zone-tab px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold transition-all shrink-0" type="button">전체 구역</button>
+            <button onclick="filterZone('A', this)" class="zone-tab px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold transition-all shrink-0" type="button">A구역 (출입구 근처)</button>
+            <button onclick="filterZone('B', this)" class="zone-tab px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold transition-all shrink-0" type="button">B구역 (전기차 충전)</button>
+            <button onclick="filterZone('C', this)" class="zone-tab px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold transition-all shrink-0" type="button">C구역 (여성/교통약자)</button>
+          </div>
+
+          <!-- VISUAL FLOOR MAP CANVAS BOARD -->
+          <div class="relative w-full bg-slate-900 rounded-3xl p-4 shadow-inner overflow-hidden border border-slate-800 select-none">
+            
+            <!-- Map Background Grid & Entrance Lane Lines -->
+            <div class="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px] opacity-40"></div>
+            
+            <!-- Legend Indicators Overlay -->
+            <div class="relative z-10 flex items-center justify-between pb-3 border-b border-slate-800 text-[11px] font-bold text-slate-300">
+              <div class="flex items-center gap-2.5">
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>빈슬롯</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-300 animate-pulse"></span>선택됨</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>전기차충전</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>점유중</span>
+              </div>
+              <span class="text-slate-400 text-[10px]">입구 ➔ 출구</span>
+            </div>
+
+            <!-- Driving Lane Indicator Lines -->
+            <div class="my-3 py-1 border-y border-dashed border-slate-700/80 flex items-center justify-between px-3 text-slate-500 font-mono text-[10px] tracking-widest uppercase">
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-emerald-400">login</span> IN DRIVEWAY</span>
+              <span class="hidden sm:inline">서행 10km/h 이하</span>
+              <span class="flex items-center gap-1">OUT <span class="material-symbols-outlined text-[14px] text-rose-400">logout</span></span>
+            </div>
+
+            <!-- DYNAMIC PARKING BAY GRID (RENDERED BY JS) -->
+            <div id="parking-visual-grid" class="grid grid-cols-4 gap-2.5 my-2 relative z-10">
+              <!-- Rendered via renderVisualFloorPlan() -->
+            </div>
+
+            <!-- Entrance Road Visual Element -->
+            <div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>스마트 주차유도 센서 가동중</span>
+              </div>
+              <span>센서 업데이트 5초 전</span>
+            </div>
+          </div>
+
+          <!-- SELECTED SLOT DYNAMIC ACTION BAR -->
+          <div class="bg-slate-900 text-white p-4 rounded-3xl flex flex-col gap-3 shadow-xl border border-slate-800">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400" id="selected-slot-icon">
+                  <span class="material-symbols-outlined text-[24px]">local_parking</span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-extrabold text-blue-400 tracking-wider uppercase" id="selected-slot-zone-tag">A구역 • 출입구 최단거리</span>
+                  <span class="text-base font-extrabold text-white" id="selected-spot-title">B2층 A-02 구역</span>
+                </div>
+              </div>
+              <div class="flex flex-col items-end">
+                <span class="text-xs text-slate-400 font-medium">예상 분당 요금</span>
+                <span class="text-lg font-black text-emerald-400" id="selected-slot-price">₩2,000 / 30분</span>
+              </div>
+            </div>
+
+            <!-- Features Badges -->
+            <div class="flex items-center gap-2 pt-1 border-t border-slate-800" id="selected-slot-badges">
+              <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[13px] text-emerald-400">bolt</span> 전기차 완속 충전기
+              </span>
+              <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[13px] text-blue-400">videocam</span> CCTV 감시 밀착 구역
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <button class="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors" onclick="toggleSlotOccupancy()" type="button">
+                점유 시뮬레이션
+              </button>
+              <button class="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/40 active:scale-95 transition-all" onclick="navigateToPage('page4')" type="button">
+                이 슬롯 입차 선점하기
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -416,7 +503,7 @@
             <h2 class="text-xl font-bold">강남 센트럴타워 지하주차장</h2>
             <p class="text-xs text-blue-200 flex items-center gap-1 mt-0.5">
               <span class="material-symbols-outlined text-[16px]">pin_drop</span>
-              B2층 A-02 지정 구역
+              <span id="reservation-slot-display">B2층 A-02 지정 구역</span>
             </p>
           </div>
 
@@ -488,7 +575,57 @@
     /* User Start Position (Gangnam Station Exit 12) */
     const USER_LOCATION = { lat: 37.4979, lng: 127.0276 };
 
-    /* 10 Parking spots in Gangnam area with detail street waypoints */
+    /* Detailed Slot Floor Plan Mock Data Engine for Page 2 */
+    const floorPlanSlots = {
+      'B2': [
+        { code: 'A-01', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-02', zone: 'A', status: 'selected', type: 'standard', carIcon: 'directions_car', carColor: 'text-blue-200', label: '선택됨' },
+        { code: 'A-03', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'A-04', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'airport_shuttle', carColor: 'text-slate-400', label: '주차중' },
+        
+        { code: 'B-01', zone: 'B', status: 'vacant', type: 'ev', carIcon: 'electric_car', carColor: 'text-amber-400', label: 'EV 충전' },
+        { code: 'B-02', zone: 'B', status: 'occupied', type: 'ev', carIcon: 'electric_car', carColor: 'text-slate-400', label: 'EV 점유' },
+        { code: 'B-03', zone: 'B', status: 'vacant', type: 'ev', carIcon: 'electric_car', carColor: 'text-amber-400', label: 'EV 충전' },
+        { code: 'B-04', zone: 'B', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        
+        { code: 'C-01', zone: 'C', status: 'vacant', type: 'priority', carIcon: 'accessible', carColor: 'text-emerald-500', label: '배려석' },
+        { code: 'C-02', zone: 'C', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'C-03', zone: 'C', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'C-04', zone: 'C', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        
+        { code: 'A-05', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'A-06', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-07', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'A-08', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' }
+      ],
+      'B1': [
+        { code: 'A-01', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-02', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-03', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'A-04', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        
+        { code: 'B-01', zone: 'B', status: 'vacant', type: 'ev', carIcon: 'electric_car', carColor: 'text-amber-400', label: 'EV 충전' },
+        { code: 'B-02', zone: 'B', status: 'occupied', type: 'ev', carIcon: 'electric_car', carColor: 'text-slate-400', label: 'EV 점유' },
+        { code: 'B-03', zone: 'B', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'B-04', zone: 'B', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        
+        { code: 'C-01', zone: 'C', status: 'vacant', type: 'priority', carIcon: 'accessible', carColor: 'text-emerald-500', label: '배려석' },
+        { code: 'C-02', zone: 'C', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'C-03', zone: 'C', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'C-04', zone: 'C', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        
+        { code: 'A-05', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-06', zone: 'A', status: 'occupied', type: 'standard', carIcon: 'directions_car', carColor: 'text-slate-400', label: '주차중' },
+        { code: 'A-07', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' },
+        { code: 'A-08', zone: 'A', status: 'vacant', type: 'standard', carIcon: 'local_parking', carColor: 'text-emerald-500', label: '빈자리' }
+      ]
+    };
+
+    let currentFloor = 'B2';
+    let currentZoneFilter = 'ALL';
+    let activeSelectedSlotCode = 'A-02';
+
+    /* Parking spots list for Map (Page 1) */
     const parkingSpots = [
       {
         id: 'spot-1',
@@ -748,20 +885,16 @@
       };
     }
 
-    /* Clear drawn street route lines */
     function clearRouteLines() {
       routePolylines.forEach(p => p.setMap(null));
       routePolylines = [];
     }
 
-    /* Draw smooth multi-point street path along real roads */
     function drawRouteLine(spot) {
       clearRouteLines();
       if (!map || !spot) return;
 
       let pathCoords = [];
-      
-      // API 오류 방지를 위해, 미리 정의된 상세 도로망 좌표(waypoints)를 사용하여 경로 생성
       if (spot.waypoints) {
         pathCoords = spot.waypoints.map(pt => new google.maps.LatLng(pt.lat, pt.lng));
       } else {
@@ -771,7 +904,6 @@
         ];
       }
 
-      // Outer glowing polyline border
       const borderLine = new google.maps.Polyline({
         path: pathCoords,
         geodesic: true,
@@ -781,7 +913,6 @@
         map: map
       });
 
-      // Inner core polyline
       const coreLine = new google.maps.Polyline({
         path: pathCoords,
         geodesic: true,
@@ -794,7 +925,6 @@
       routePolylines.push(borderLine, coreLine);
     }
 
-    /* Initialize Google Map callback */
     function initMap() {
       map = new google.maps.Map(document.getElementById('google-map-canvas'), {
         center: USER_LOCATION,
@@ -810,7 +940,6 @@
       trafficLayer = new google.maps.TrafficLayer();
       defineHTMLMarkerOverlay();
 
-      // Render User Current Location Pulse Marker
       new window.HTMLMarkerOverlay(
         new google.maps.LatLng(USER_LOCATION.lat, USER_LOCATION.lng),
         `
@@ -831,7 +960,6 @@
 
     function renderParkingMarkers() {
       parkingSpots.forEach(spot => {
-        // Strict Rule: >10 seats is Green (여유), <=10 seats is Red (혼잡)
         const isCongested = spot.vacancyCount <= 10;
         spot.badgeBg = isCongested ? 'bg-rose-600 border-rose-300' : 'bg-emerald-600 border-emerald-300';
         spot.pinColor = isCongested ? 'bg-rose-600' : 'bg-emerald-600';
@@ -866,7 +994,6 @@
 
       const isCongested = spot.vacancyCount <= 10;
 
-      // Update Custom Overlay Pins visually
       customOverlays.forEach(item => {
         const el = document.getElementById(`marker-${item.spotId}`);
         if (!el) return;
@@ -884,19 +1011,16 @@
         }
       });
 
-      // Pan Google Map smoothly
       if (map) {
         map.panTo(spot.position);
       }
 
-      // Draw street route on Google Maps
       if (showRoute) {
         drawRouteLine(spot);
       } else {
         clearRouteLines();
       }
 
-      // Update Bottom Drawer Card Text
       document.getElementById('card-title').innerText = spot.name;
       document.getElementById('card-tag').innerText = spot.tag;
       document.getElementById('card-walk').innerText = spot.walk;
@@ -907,7 +1031,6 @@
       document.getElementById('card-unit').innerText = spot.unit;
       document.getElementById('card-coupon').innerText = spot.coupon;
 
-      // Dynamic Card Status Badge Colors (Rose for Congested <=10, Emerald for Available >10)
       const badgeBox = document.getElementById('vacancy-badge-box');
       const vacancyText = document.getElementById('card-vacancy');
       const totalText = document.getElementById('card-total');
@@ -916,26 +1039,213 @@
           badgeBox.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-50 border border-rose-200 shrink-0';
           if (vacancyText) vacancyText.className = 'text-xs text-rose-700 font-extrabold leading-tight';
           if (totalText) totalText.className = 'text-[10px] text-rose-600 font-medium leading-none';
-          const ping = badgeBox.querySelector('.animate-ping');
-          if (ping) ping.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75';
-          const dot = badgeBox.querySelector('.relative.inline-flex');
-          if (dot) dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500';
         } else {
           badgeBox.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 shrink-0';
           if (vacancyText) vacancyText.className = 'text-xs text-emerald-700 font-extrabold leading-tight';
           if (totalText) totalText.className = 'text-[10px] text-emerald-600 font-medium leading-none';
-          const ping = badgeBox.querySelector('.animate-ping');
-          if (ping) ping.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
-          const dot = badgeBox.querySelector('.relative.inline-flex');
-          if (dot) dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
         }
       }
 
       const p2Title = document.getElementById('page2-title');
-      if (p2Title) p2Title.innerHTML = `${spot.name} <span class="material-symbols-outlined text-[18px] text-blue-600">verified</span>`;
+      if (p2Title) p2Title.innerText = spot.name;
     }
 
-    /* Filter Chips Toggle Logic */
+    /* Page 2 Visual Floor Plan Interactive Renderer */
+    function renderVisualFloorPlan() {
+      const container = document.getElementById('parking-visual-grid');
+      if (!container) return;
+
+      const slots = floorPlanSlots[currentFloor] || [];
+      container.innerHTML = '';
+
+      let total = slots.length;
+      let vacant = 0;
+      let ev = 0;
+      let occupied = 0;
+
+      slots.forEach(slot => {
+        if (slot.status === 'vacant') vacant++;
+        if (slot.status === 'occupied') occupied++;
+        if (slot.type === 'ev') ev++;
+
+        // Filter by Zone
+        if (currentZoneFilter !== 'ALL' && slot.zone !== currentZoneFilter) {
+          return;
+        }
+
+        const isSelected = slot.code === activeSelectedSlotCode;
+        
+        let bayStyle = "";
+        let badgeBg = "";
+        let iconMarkup = "";
+        let borderAccent = "";
+
+        if (isSelected) {
+          bayStyle = "bg-blue-600 text-white shadow-xl ring-4 ring-blue-400/80 scale-[1.03] z-20 car-animated";
+          badgeBg = "bg-white text-blue-800";
+          iconMarkup = `<span class="material-symbols-outlined text-[30px] text-white">directions_car</span>`;
+          borderAccent = "border-blue-400";
+        } else if (slot.status === 'occupied') {
+          bayStyle = "bg-slate-800/90 text-slate-400 opacity-60 border-slate-700";
+          badgeBg = "bg-slate-700 text-slate-300";
+          iconMarkup = `<span class="material-symbols-outlined text-[28px] ${slot.carColor}">${slot.carIcon}</span>`;
+          borderAccent = "border-slate-700";
+        } else if (slot.type === 'ev') {
+          bayStyle = "bg-gradient-to-b from-amber-950/80 to-slate-900 text-amber-300 hover:border-amber-400 border-amber-500/40";
+          badgeBg = "bg-amber-400 text-slate-950 font-black";
+          iconMarkup = `<span class="material-symbols-outlined text-[28px] text-amber-400">electric_car</span>`;
+          borderAccent = "border-amber-500/50";
+        } else if (slot.type === 'priority') {
+          bayStyle = "bg-gradient-to-b from-indigo-950/80 to-slate-900 text-indigo-300 hover:border-indigo-400 border-indigo-500/40";
+          badgeBg = "bg-indigo-400 text-slate-950 font-black";
+          iconMarkup = `<span class="material-symbols-outlined text-[28px] text-indigo-400">accessible</span>`;
+          borderAccent = "border-indigo-500/50";
+        } else {
+          // Standard Vacant Slot
+          bayStyle = "bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 border-emerald-500/40 hover:border-emerald-400";
+          badgeBg = "bg-emerald-500 text-slate-950 font-black";
+          iconMarkup = `<span class="material-symbols-outlined text-[28px] text-emerald-400">local_parking</span>`;
+          borderAccent = "border-emerald-500/50";
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `parking-bay flex flex-col items-center justify-between p-2.5 rounded-2xl border ${borderAccent} min-h-[92px] ${bayStyle} transition-all active:scale-95`;
+        btn.onclick = () => onSlotClick(slot);
+
+        btn.innerHTML = `
+          <div class="flex items-center justify-between w-full">
+            <span class="text-xs font-black tracking-wider">${slot.code}</span>
+            ${slot.type === 'ev' ? '<span class="material-symbols-outlined text-[14px] text-amber-400">bolt</span>' : ''}
+          </div>
+          <div class="my-1 flex items-center justify-center">
+            ${iconMarkup}
+          </div>
+          <span class="text-[9px] px-2 py-0.5 rounded-full ${badgeBg} font-extrabold tracking-tight">
+            ${isSelected ? '선택됨' : slot.label}
+          </span>
+        `;
+
+        container.appendChild(btn);
+      });
+
+      // Update Top Summary Stats Display
+      document.getElementById('floor-total-count').innerText = `${total}면`;
+      document.getElementById('floor-vacant-count').innerText = `${vacant}면`;
+      document.getElementById('floor-ev-count').innerText = `${ev}면`;
+      document.getElementById('floor-occupied-count').innerText = `${occupied}면`;
+    }
+
+    /* Interactive Slot Selection Callback */
+    function onSlotClick(slot) {
+      if (slot.status === 'occupied') {
+        // Show gentle feedback for occupied slot
+        const display = document.getElementById('selected-spot-title');
+        if (display) {
+          display.innerText = `${currentFloor}층 ${slot.code} (현재 점유중인 슬롯입니다)`;
+        }
+        return;
+      }
+
+      activeSelectedSlotCode = slot.code;
+      renderVisualFloorPlan();
+
+      // Update Bottom Detailed Action Card
+      const titleEl = document.getElementById('selected-spot-title');
+      const tagEl = document.getElementById('selected-slot-zone-tag');
+      const priceEl = document.getElementById('selected-slot-price');
+      const iconEl = document.getElementById('selected-slot-icon');
+      const badgesEl = document.getElementById('selected-slot-badges');
+      const page4Display = document.getElementById('reservation-slot-display');
+
+      const fullTitle = `${currentFloor}층 ${slot.code} 구역`;
+      if (titleEl) titleEl.innerText = fullTitle;
+      if (page4Display) page4Display.innerText = `${fullTitle} (입차선점)`;
+
+      if (tagEl) {
+        if (slot.zone === 'A') tagEl.innerText = 'A구역 • 주차장 출입구 최단거리';
+        else if (slot.zone === 'B') tagEl.innerText = 'B구역 • 급속/완속 전기차 전용 구역';
+        else tagEl.innerText = 'C구역 • 여성/교통약자 우대 안심 구역';
+      }
+
+      if (priceEl) {
+        const spot = parkingSpots.find(s => s.id === activeSpotId) || parkingSpots[0];
+        priceEl.innerText = `${spot.price} ${spot.unit}`;
+      }
+
+      if (iconEl) {
+        if (slot.type === 'ev') iconEl.innerHTML = `<span class="material-symbols-outlined text-[24px] text-amber-400">electric_car</span>`;
+        else if (slot.type === 'priority') iconEl.innerHTML = `<span class="material-symbols-outlined text-[24px] text-indigo-400">accessible</span>`;
+        else iconEl.innerHTML = `<span class="material-symbols-outlined text-[24px] text-blue-400">local_parking</span>`;
+      }
+
+      if (badgesEl) {
+        let badgesHTML = '';
+        if (slot.type === 'ev') {
+          badgesHTML += `<span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">bolt</span> 20kW 급속 충전 지원</span>`;
+        } else if (slot.type === 'priority') {
+          badgesHTML += `<span class="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">accessible</span> 광폭 주차면 (3.3m)</span>`;
+        } else {
+          badgesHTML += `<span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-blue-400">videocam</span> AI CCTV 밀착 관제</span>`;
+        }
+        badgesHTML += `<span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-emerald-400">check_circle</span> 15분 무료 선점 유예</span>`;
+        badgesEl.innerHTML = badgesHTML;
+      }
+    }
+
+    /* Switch Floor (B1 <-> B2) */
+    function switchFloor(floor) {
+      currentFloor = floor;
+      const b1Btn = document.getElementById('floor-b1-btn');
+      const b2Btn = document.getElementById('floor-b2-btn');
+      const subtitle = document.getElementById('floor-subtitle');
+
+      if (floor === 'B1') {
+        b1Btn.className = "px-3 py-1 rounded-xl bg-white text-blue-600 shadow-sm transition-all";
+        b2Btn.className = "px-3 py-1 rounded-xl text-slate-600 hover:text-slate-900 transition-all";
+        if (subtitle) subtitle.innerText = "실시간 B1층 주차 슬롯 점유 현황 (CCTV LiDAR 연동)";
+        activeSelectedSlotCode = 'A-03';
+      } else {
+        b2Btn.className = "px-3 py-1 rounded-xl bg-white text-blue-600 shadow-sm transition-all";
+        b1Btn.className = "px-3 py-1 rounded-xl text-slate-600 hover:text-slate-900 transition-all";
+        if (subtitle) subtitle.innerText = "실시간 B2층 주차 슬롯 점유 현황 (CCTV LiDAR 연동)";
+        activeSelectedSlotCode = 'A-02';
+      }
+
+      renderVisualFloorPlan();
+      const firstVacant = (floorPlanSlots[currentFloor] || []).find(s => s.code === activeSelectedSlotCode);
+      if (firstVacant) onSlotClick(firstVacant);
+    }
+
+    /* Filter Floor Zone */
+    function filterZone(zone, btn) {
+      currentZoneFilter = zone;
+      document.querySelectorAll('.zone-tab').forEach(b => {
+        b.className = "zone-tab px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold transition-all shrink-0";
+      });
+      btn.className = "zone-tab px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold transition-all shrink-0";
+      renderVisualFloorPlan();
+    }
+
+    /* Toggle Slot Occupancy Interactive Simulation */
+    function toggleSlotOccupancy() {
+      const slots = floorPlanSlots[currentFloor] || [];
+      const slot = slots.find(s => s.code === activeSelectedSlotCode);
+      if (!slot) return;
+
+      if (slot.status === 'vacant' || slot.status === 'selected') {
+        slot.status = 'occupied';
+        slot.label = '주차중';
+      } else {
+        slot.status = 'vacant';
+        slot.label = '빈자리';
+      }
+
+      renderVisualFloorPlan();
+      onSlotClick(slot);
+    }
+
+    /* Filter Chips Toggle Logic for Page 1 */
     function setFilter(filterType, btn) {
       currentFilter = filterType;
       document.querySelectorAll('.filter-btn').forEach(b => {
@@ -957,7 +1267,6 @@
       });
     }
 
-    /* Map Controls Helpers */
     function toggleTrafficLayer() {
       showTraffic = !showTraffic;
       const btn = document.getElementById('traffic-btn');
@@ -1015,7 +1324,6 @@
       }
     }
 
-    /* Tab Navigation */
     function navigateToPage(pageId) {
       document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
       const targetPage = document.getElementById(pageId);
@@ -1036,15 +1344,16 @@
         }
       });
 
+      if (pageId === 'page2') {
+        renderVisualFloorPlan();
+      }
+
       window.scrollTo(0, 0);
     }
 
-    function selectSlot(code, title) {
-      const titleEl = document.getElementById('selected-spot-title');
-      if (titleEl) titleEl.innerText = title;
-    }
-
     window.addEventListener('load', () => {
+      renderVisualFloorPlan();
+
       const hash = location.hash.replace('#', '');
       if (hash && ['page1', 'page2', 'page3', 'page4'].includes(hash)) {
         navigateToPage(hash);
