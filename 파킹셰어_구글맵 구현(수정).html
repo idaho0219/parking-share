@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <meta content="mobile_tab" name="shell-type"/>
+  <title>파킹셰어 - Smart Parking Platform (Live Google Map)</title>
+  
+  <!-- Fonts & Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @layer base {
+      html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #faf8ff; font-family: 'Noto Sans KR', sans-serif; }
+      body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .page-section { display: none; }
+    .page-section.active { display: flex; flex-direction: column; }
+    
+    /* Pulse Sonar Animation for User Location */
+    @keyframes sonar-pulse {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    .sonar-ring {
+      animation: sonar-pulse 2s infinite ease-out;
+    }
+
+    /* Floating Marker Bounce */
+    @keyframes pin-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .marker-active-bounce {
+      animation: pin-float 1.8s ease-in-out infinite;
+    }
+
+    /* Hide Google Maps default info box clutter */
+    .gm-style-cc, a[href^="https://maps.google.com/maps"] {
+      display: none !important;
+    }
+    .gm-svpc {
+      display: none !important;
+    }
+  </style>
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'on-secondary': '#ffffff',
+            'secondary-container': '#82f5c1',
+            'background': '#faf8ff',
+            'surface-container': '#eaedff',
+            'surface-bright': '#faf8ff',
+            'surface-container-low': '#f2f3ff',
+            'surface-container-lowest': '#ffffff',
+            'on-background': '#131b2e',
+            'on-surface-variant': '#434655',
+            'on-secondary-container': '#00714e',
+            'secondary': '#006c4a',
+            'primary': '#0037b0',
+            'primary-fixed': '#dce1ff',
+            'outline': '#747686',
+            'on-surface': '#131b2e',
+            'surface': '#faf8ff',
+            'primary-container': '#1d4ed8'
+          },
+          borderRadius: {
+            'DEFAULT': '0.25rem',
+            'lg': '0.5rem',
+            'xl': '0.75rem',
+            '2xl': '1rem',
+            '3xl': '1.5rem',
+            'full': '9999px'
+          },
+          spacing: {
+            'margin': '1.25rem',
+            'space-md': '0.75rem',
+            'space-sm': '0.5rem'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Maps JavaScript API with User Key -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCjFuuVJwILPxT91ZUnn_J5x0AFUPfqnkM&libraries=places,geometry&callback=initMap" async defer></script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen">
+  
+  <header class="fixed top-0 inset-x-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_12px_rgba(19,27,46,0.06)] pt-safe">
+    <div class="h-16 px-margin flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center text-white shadow-[0_4px_14px_rgba(0,55,176,0.28)]">
+          <span class="material-symbols-outlined text-[24px]">local_parking</span>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-lg text-on-surface tracking-tight">파킹셰어</span>
+            <span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-extrabold text-[10px] uppercase tracking-wider">LIVE GOOGLE MAP</span>
+          </div>
+          <span class="text-xs text-on-surface-variant font-medium leading-none" id="header-subtitle">강남역 · 테헤란로 · 역삼역</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button aria-label="알림" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:scale-95 transition-all" type="button">
+          <span class="material-symbols-outlined text-[22px]">notifications</span>
+        </button>
+        <button aria-label="프로필" class="w-10 h-10 flex items-center justify-center rounded-full hover:opacity-90 active:scale-95 transition-all" type="button">
+          <img alt="Profile" class="w-8 h-8 rounded-full object-cover border border-primary/20" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"/>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-surface">
+
+    <div id="page1" class="page-section active w-full">
+      <div class="flex flex-col w-full relative select-none">
+        
+        <!-- Top Floating Search Bar & Horizontal Filter Chips -->
+        <div class="px-margin pt-3 pb-2 z-30 flex flex-col gap-2.5 bg-gradient-to-b from-surface via-surface/95 to-transparent">
+          <form class="w-full bg-white shadow-[0_8px_24px_-4px_rgba(19,27,46,0.12)] rounded-2xl px-4 py-2.5 flex items-center gap-2 transition-all border border-slate-200/80 focus-within:border-primary focus-within:shadow-[0_8px_30px_rgba(0,55,176,0.18)]" onsubmit="handleSearch(event)">
+            <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings: 'FILL' 1;">search</span>
+            <input id="map-search-input" class="w-full bg-transparent text-on-surface placeholder:text-outline text-sm font-medium focus:outline-none min-w-0" placeholder="목적지, 건물명 또는 주소 검색" type="text" value="강남역 12번 출구 주변"/>
+            <button aria-label="검색 제출" type="submit" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform">
+              <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </button>
+            <div class="w-px h-5 bg-outline-variant/60 my-auto"></div>
+            <button aria-label="상세 필터" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-90 transition-transform" type="button" onclick="setFilter('all', this)">
+              <span class="material-symbols-outlined text-[20px]">tune</span>
+            </button>
+          </form>
+
+          <!-- Filter Chips Scroll Container -->
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5" id="filter-chip-container">
+            <button class="filter-btn active-chip flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all" data-filter="all" onclick="setFilter('all', this)" type="button">
+              <span class="material-symbols-outlined text-[15px]">done</span>
+              <span>전체 주차장</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-700 text-xs font-medium shadow-sm border border-slate-200 whitespace-nowrap active:scale-95 transition-all hover:bg-slate-50" data-filter="available" onclick="setFilter('available', this)" type="button">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span class="font-bold text-emerald-700">여유 (10석 초과)</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-700 text-xs font-medium shadow-sm border border-slate-200 whitespace-nowrap active:scale-95 transition-all hover:bg-slate-50" data-filter="congested" onclick="setFilter('congested', this)" type="button">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span class="font-bold text-rose-700">혼잡 (10석 이하)</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-700 text-xs font-medium shadow-sm border border-slate-200 whitespace-nowrap active:scale-95 transition-all hover:bg-slate-50" data-filter="p2p" onclick="setFilter('p2p', this)" type="button">
+              <span class="material-symbols-outlined text-[15px] text-blue-600">handshake</span>
+              <span>P2P 민간 공유</span>
+            </button>
+            <button class="filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-700 text-xs font-medium shadow-sm border border-slate-200 whitespace-nowrap active:scale-95 transition-all hover:bg-slate-50" data-filter="public" onclick="setFilter('public', this)" type="button">
+              <span class="material-symbols-outlined text-[15px] text-amber-600">account_balance</span>
+              <span>공영 주차장</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- REAL GOOGLE MAP VIEWPORT CONTAINER -->
+        <div class="relative w-full h-[480px] overflow-hidden bg-slate-100 shadow-inner border-y border-slate-200">
+          
+          <!-- Google Map Mounting Div -->
+          <div id="google-map-canvas" class="w-full h-full"></div>
+
+          <!-- Live Map Overlay Info Badge & Color Status Legend -->
+          <div class="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2">
+            <div class="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg text-xs font-bold text-slate-800 flex items-center gap-2 border border-slate-200/80">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span>Google Maps 실시간</span>
+            </div>
+            <div class="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-lg text-[11px] font-extrabold text-slate-800 flex items-center gap-3 border border-slate-200/80">
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-emerald-200"></span>
+                <span class="text-emerald-700">여유 (&gt;10석)</span>
+              </div>
+              <div class="w-px h-3 bg-slate-200"></div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-rose-500 ring-2 ring-rose-200"></span>
+                <span class="text-rose-700">혼잡 (&le;10석)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Map Quick Action Floating Buttons -->
+          <div class="absolute right-4 top-4 z-20 flex flex-col gap-2">
+            <button id="gps-btn" onclick="recenterLocation()" class="w-10 h-10 rounded-2xl bg-white shadow-xl flex items-center justify-center text-slate-700 hover:text-blue-600 active:scale-90 transition-all border border-slate-200/80" type="button" title="현재 위치">
+              <span id="gps-icon" class="material-symbols-outlined text-[22px]">my_location</span>
+            </button>
+            <button id="traffic-btn" onclick="toggleTrafficLayer()" class="px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md shadow-xl text-[11px] font-bold text-slate-700 border border-slate-200/80 active:scale-95 transition-all" type="button">
+              교통정보 OFF
+            </button>
+            <button id="route-btn" onclick="toggleRouteLine()" class="px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-xl text-[11px] font-bold border border-blue-500 active:scale-95 transition-all" type="button">
+              도로 경로
+            </button>
+          </div>
+        </div>
+
+        <div class="px-margin pt-3 pb-4">
+          <div class="bg-white rounded-3xl p-4 shadow-xl border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase tracking-wider" id="card-tag">추천 최저가</span>
+                  <span class="text-xs text-slate-500 font-medium" id="card-walk">도보 2분</span>
+                </div>
+                <h3 class="text-lg font-black text-slate-900 tracking-tight mt-1 truncate" id="card-title">강남 센트럴타워 지하주차장</h3>
+                <p class="text-xs text-slate-500 font-medium truncate mt-0.5" id="card-subtext">서울 강남구 테헤란로 105 (강남역 12번 출구 120m)</p>
+              </div>
+
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 shrink-0" id="vacancy-badge-box">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <div class="flex flex-col">
+                  <span class="text-xs text-emerald-700 font-extrabold leading-tight" id="card-vacancy">여유 24석</span>
+                  <span class="text-[10px] text-emerald-600 font-medium leading-none" id="card-total">총 150면</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Price & Action Row -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <div class="flex items-baseline gap-1">
+                <span class="text-xl font-black text-slate-900" id="card-price">₩2,000</span>
+                <span class="text-xs text-slate-500 font-medium" id="card-unit">/ 30분</span>
+                <span class="ml-2 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md" id="card-coupon">첫 이용 2,000원 할인</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 active:scale-95 transition-all" onclick="navigateToPage('page2')" type="button">
+                  2D 도면
+                </button>
+                <button class="px-5 py-2.5 rounded-2xl bg-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-600/30 active:scale-95 transition-all hover:bg-blue-700" onclick="navigateToPage('page4')" type="button">
+                  즉시 예약
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="page2" class="page-section w-full">
+      <div class="px-margin pt-3 flex flex-col gap-3">
+        <div class="bg-white rounded-3xl p-5 shadow-lg border border-slate-100 flex flex-col gap-3">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 class="text-base font-bold text-slate-900" id="page2-title">강남 센트럴타워 지하주차장</h2>
+              <p class="text-xs text-slate-500">실시간 B2층 주차 슬롯 점유 현황</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span><span>빈자리</span></div>
+              <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-slate-300"></span><span>점유중</span></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2.5 my-2">
+            <div class="flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-100 min-h-[85px] opacity-60">
+              <span class="text-xs font-bold text-slate-600">A-01</span>
+              <span class="material-symbols-outlined text-[26px] text-slate-400">directions_car</span>
+              <span class="text-[10px] text-slate-400 font-bold">주차중</span>
+            </div>
+
+            <button class="slot-select relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-emerald-500 text-white shadow-md min-h-[85px] ring-2 ring-emerald-600" onclick="selectSlot('A-02', 'B2층 A-02 구역')" type="button">
+              <span class="text-xs font-bold">A-02</span>
+              <span class="material-symbols-outlined text-[24px]">check_circle</span>
+              <span class="text-[9px] bg-white text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">선택됨</span>
+            </button>
+
+            <button class="slot-select flex flex-col items-center justify-between p-2.5 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 min-h-[85px]" onclick="selectSlot('A-03', 'B2층 A-03 구역')" type="button">
+              <span class="text-xs font-bold">A-03</span>
+              <span class="material-symbols-outlined text-[24px] text-emerald-600">local_parking</span>
+              <span class="text-[10px] text-emerald-600 font-bold">빈자리</span>
+            </button>
+
+            <div class="flex flex-col items-center justify-between p-2.5 rounded-2xl bg-slate-100 min-h-[85px] opacity-60">
+              <span class="text-xs font-bold text-slate-600">A-04</span>
+              <span class="material-symbols-outlined text-[26px] text-slate-400">directions_car</span>
+              <span class="text-[10px] text-slate-400 font-bold">주차중</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-2xl flex items-center justify-between border border-slate-100">
+            <div class="flex flex-col">
+              <span class="text-[10px] font-bold text-blue-600 tracking-wider uppercase">선택한 주차 구역</span>
+              <span class="text-sm font-bold text-slate-900" id="selected-spot-title">B2층 A-02 구역</span>
+            </div>
+            <button class="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all hover:bg-blue-700" onclick="navigateToPage('page4')" type="button">
+              입차 선점 예약
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page3" class="page-section w-full">
+      <div class="flex flex-col w-full">
+        <div class="px-margin pt-3">
+          <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-600 to-amber-700 p-4 shadow-md text-white">
+            <div class="relative z-10 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 text-white">
+                  <span class="material-symbols-outlined text-[24px]">savings</span>
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-[10px] text-amber-200 uppercase font-bold tracking-wider">이웃 상생 재테크</span>
+                  <p class="text-xs font-medium truncate">출근 후 비어있는 주차면, 이웃과 공유하세요!</p>
+                </div>
+              </div>
+              <button class="shrink-0 px-3.5 py-2 rounded-xl bg-white text-amber-800 font-bold text-xs flex items-center gap-1 active:scale-95 transition-transform shadow-sm" type="button">
+                <span>호스트 등록</span>
+                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-margin pt-4 pb-2 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base font-bold text-slate-900">실시간 P2P 공유 주차면</span>
+            <span class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">3</span>
+          </div>
+        </div>
+
+        <div class="px-margin flex flex-col gap-3 pb-8">
+          <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">P2P 거주자 지정</span>
+              <span class="text-xs text-emerald-600 font-bold">1,500원 / 시간</span>
+            </div>
+            <div class="flex gap-3 items-start">
+              <img class="w-20 h-20 rounded-2xl object-cover bg-slate-100 shrink-0" src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=300&auto=format&fit=crop&q=80" alt="주차장 이미지"/>
+              <div class="flex flex-col min-w-0">
+                <h3 class="text-sm font-bold text-slate-900 truncate">역삼동 래미안 빌라 102동 지정석</h3>
+                <p class="text-[11px] text-slate-500 truncate mt-0.5">서울 강남구 테헤란로28길 19-4 (도보 3분)</p>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs font-medium text-slate-700">김*민 호스트 ★ 4.9</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all" onclick="selectSpot('spot-4'); navigateToPage('page4')" type="button">
+              즉시 예약 신청하기
+            </button>
+          </div>
+
+          <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold">P2P 오피스 공유</span>
+              <span class="text-xs text-emerald-600 font-bold">1,800원 / 시간</span>
+            </div>
+            <div class="flex gap-3 items-start">
+              <img class="w-20 h-20 rounded-2xl object-cover bg-slate-100 shrink-0" src="https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=300&auto=format&fit=crop&q=80" alt="주차장 이미지"/>
+              <div class="flex flex-col min-w-0">
+                <h3 class="text-sm font-bold text-slate-900 truncate">테헤란로 포스코타워 민간 공유</h3>
+                <p class="text-[11px] text-slate-500 truncate mt-0.5">서울 강남구 테헤란로 134 (도보 7분)</p>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs font-medium text-slate-700">포스코타워 파트너 ★ 4.8</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all" onclick="selectSpot('spot-8'); navigateToPage('page4')" type="button">
+              즉시 예약 신청하기
+            </button>
+          </div>
+
+          <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold">P2P 주말 나눔</span>
+              <span class="text-xs text-emerald-600 font-bold">1,200원 / 시간</span>
+            </div>
+            <div class="flex gap-3 items-start">
+              <img class="w-20 h-20 rounded-2xl object-cover bg-slate-100 shrink-0" src="https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?w=300&auto=format&fit=crop&q=80" alt="주차장 이미지"/>
+              <div class="flex flex-col min-w-0">
+                <h3 class="text-sm font-bold text-slate-900 truncate">서초 푸르지오 P2P 나눔주차장</h3>
+                <p class="text-[11px] text-slate-500 truncate mt-0.5">서울 서초구 사임당로 143 (도보 8분)</p>
+                <div class="flex items-center gap-1.5 mt-2">
+                  <span class="text-xs font-medium text-slate-700">이*진 호스트 ★ 5.0</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all" onclick="selectSpot('spot-9'); navigateToPage('page4')" type="button">
+              즉시 예약 신청하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page4" class="page-section w-full">
+      <div class="flex flex-col w-full px-margin pt-3 gap-3">
+        <div class="bg-gradient-to-br from-blue-700 to-blue-900 text-white rounded-3xl p-5 shadow-xl flex flex-col gap-3 relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-extrabold">이용 중 (Active)</span>
+            <span class="text-[11px] text-blue-200">입차 14:20 • 현재 38분 경과</span>
+          </div>
+
+          <div class="flex flex-col mt-1">
+            <h2 class="text-xl font-bold">강남 센트럴타워 지하주차장</h2>
+            <p class="text-xs text-blue-200 flex items-center gap-1 mt-0.5">
+              <span class="material-symbols-outlined text-[16px]">pin_drop</span>
+              B2층 A-02 지정 구역
+            </p>
+          </div>
+
+          <div class="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 flex items-center justify-between border border-white/15">
+            <div class="flex flex-col">
+              <span class="text-[10px] text-blue-200">자동 정산 예정 금액</span>
+              <span class="text-xl font-bold text-white">₩3,200</span>
+            </div>
+            <button class="px-3.5 py-2 rounded-xl bg-white text-blue-700 font-bold text-xs shadow-sm active:scale-95 transition-transform" type="button">
+              모바일 출차 QR
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-900">등록 차량 관리</span>
+            <span class="text-blue-600 font-bold text-xs cursor-pointer">+ 차량 추가</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+              <span class="material-symbols-outlined text-[24px]">directions_car</span>
+            </div>
+            <div class="flex flex-col flex-1">
+              <span class="text-sm font-bold text-slate-900">12가 3456 (대표)</span>
+              <span class="text-[11px] text-slate-500">현대 아이오닉 6 • 전기차 할인 자동 적용</span>
+            </div>
+            <span class="material-symbols-outlined text-emerald-600 text-[22px]">check_circle</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-white/90 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(19,27,46,0.08)] border-t border-slate-100">
+    <div class="flex items-center justify-around h-16 px-1">
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors text-blue-600" data-page="page1" href="#page1" onclick="navigateToPage('page1'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">near_me</span>
+        <span class="text-[11px] leading-tight font-medium">주차 탐색</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-500 hover:text-slate-900 transition-colors" data-page="page2" href="#page2" onclick="navigateToPage('page2'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">grid_view</span>
+        <span class="text-[11px] leading-tight font-medium">슬롯 현황</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-500 hover:text-slate-900 transition-colors" data-page="page3" href="#page3" onclick="navigateToPage('page3'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">handshake</span>
+        <span class="text-[11px] leading-tight font-medium">공유 주차</span>
+      </a>
+
+      <a class="group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-500 hover:text-slate-900 transition-colors" data-page="page4" href="#page4" onclick="navigateToPage('page4'); return false;">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-105 transition-transform">schedule</span>
+        <span class="text-[11px] leading-tight font-medium">내 주차</span>
+      </a>
+    </div>
+  </nav>
+
+  <script>
+    /* Subtitle titles for header */
+    const subtitles = {
+      page1: '강남역 · 테헤란로 · 역삼역',
+      page2: 'B2층 실시간 파킹 슬롯 스마트 뷰',
+      page3: '이웃과 공유하는 스마트 P2P 주차',
+      page4: '내 예약 및 등록 차량 관리'
+    };
+
+    /* User Start Position (Gangnam Station Exit 12) */
+    const USER_LOCATION = { lat: 37.4979, lng: 127.0276 };
+
+    /* 10 Parking spots in Gangnam area with detail street waypoints */
+    const parkingSpots = [
+      {
+        id: 'spot-1',
+        name: '강남 센트럴타워 지하주차장',
+        vacancyCount: 24,
+        total: '총 150면',
+        price: '₩2,000',
+        unit: '/ 30분',
+        coupon: '첫 이용 2,000원 할인',
+        tag: '추천 최저가',
+        walk: '도보 2분',
+        subtext: '서울 강남구 테헤란로 105 (강남역 12번 출구 120m)',
+        category: 'private',
+        position: { lat: 37.4985, lng: 127.0288 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4982, lng: 127.0282 },
+          { lat: 37.4985, lng: 127.0288 }
+        ]
+      },
+      {
+        id: 'spot-2',
+        name: '역삼 테크노타워 스마트 주차장',
+        vacancyCount: 8,
+        total: '총 80면',
+        price: '₩3,000',
+        unit: '/ 30분',
+        coupon: '카드사 10% 적립',
+        tag: '실내 자주식',
+        walk: '도보 4분',
+        subtext: '서울 강남구 테헤란로 124 (강남역 1번 출구 280m)',
+        category: 'private',
+        position: { lat: 37.4994, lng: 127.0315 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4985, lng: 127.0288 },
+          { lat: 37.4990, lng: 127.0302 },
+          { lat: 37.4994, lng: 127.0315 }
+        ]
+      },
+      {
+        id: 'spot-3',
+        name: '강남역 제1공영주차장',
+        vacancyCount: 3,
+        total: '총 45면',
+        price: '₩1,200',
+        unit: '/ 10분',
+        coupon: '경차/친환경 50% 할인',
+        tag: '공영 할인',
+        walk: '도보 5분',
+        subtext: '서울 강남구 역삼동 821-1 (테헤란로6길 인근)',
+        category: 'public',
+        position: { lat: 37.4965, lng: 127.0292 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4972, lng: 127.0280 },
+          { lat: 37.4965, lng: 127.0292 }
+        ]
+      },
+      {
+        id: 'spot-4',
+        name: '역삼동 래미안 빌라 P2P 지정석',
+        vacancyCount: 1,
+        total: '공유 1면',
+        price: '₩1,500',
+        unit: '/ 1시간',
+        coupon: '거주자 공유 할인',
+        tag: 'P2P 거주자',
+        walk: '도보 3분',
+        subtext: '서울 강남구 테헤란로28길 19-4 (개인 전용구역)',
+        category: 'p2p',
+        position: { lat: 37.5002, lng: 127.0332 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4990, lng: 127.0302 },
+          { lat: 37.4998, lng: 127.0322 },
+          { lat: 37.5002, lng: 127.0332 }
+        ]
+      },
+      {
+        id: 'spot-5',
+        name: '신논현 뷰티타워 주차장',
+        vacancyCount: 18,
+        total: '총 110면',
+        price: '₩2,500',
+        unit: '/ 30분',
+        coupon: '야간 일일권 15,000원',
+        tag: '24시간 운영',
+        walk: '도보 6분',
+        subtext: '서울 강남구 강남대로 464 (신논현역 6번 출구 150m)',
+        category: 'private',
+        position: { lat: 37.5031, lng: 127.0254 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4995, lng: 127.0268 },
+          { lat: 37.5015, lng: 127.0260 },
+          { lat: 37.5031, lng: 127.0254 }
+        ]
+      },
+      {
+        id: 'spot-6',
+        name: '역삼1동 주민센터 공영주차장',
+        vacancyCount: 6,
+        total: '총 60면',
+        price: '₩1,000',
+        unit: '/ 10분',
+        coupon: '복지/다자녀 50% 할인',
+        tag: '공영 저렴',
+        walk: '도보 7분',
+        subtext: '서울 강남구 역삼로7길 16',
+        category: 'public',
+        position: { lat: 37.4951, lng: 127.0328 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4965, lng: 127.0292 },
+          { lat: 37.4958, lng: 127.0310 },
+          { lat: 37.4951, lng: 127.0328 }
+        ]
+      },
+      {
+        id: 'spot-7',
+        name: 'GS타워 스마트 주차장',
+        vacancyCount: 42,
+        total: '총 350면',
+        price: '₩3,500',
+        unit: '/ 30분',
+        coupon: 'GS Pay 결제 시 1,000원 적립',
+        tag: '대형 프리미엄',
+        walk: '도보 8분',
+        subtext: '서울 강남구 논현로 508 (역삼역 7번 출구 연계)',
+        category: 'private',
+        position: { lat: 37.5018, lng: 127.0371 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4990, lng: 127.0302 },
+          { lat: 37.5002, lng: 127.0332 },
+          { lat: 37.5010, lng: 127.0352 },
+          { lat: 37.5018, lng: 127.0371 }
+        ]
+      },
+      {
+        id: 'spot-8',
+        name: '테헤란로 포스코타워 민간 공유',
+        vacancyCount: 2,
+        total: '공유 5면',
+        price: '₩1,800',
+        unit: '/ 1시간',
+        coupon: '주말 30% 특가',
+        tag: 'P2P 오피스',
+        walk: '도보 7분',
+        subtext: '서울 강남구 테헤란로 134 (포스코타워 지하3층)',
+        category: 'p2p',
+        position: { lat: 37.5000, lng: 127.0350 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4990, lng: 127.0302 },
+          { lat: 37.4995, lng: 127.0328 },
+          { lat: 37.5000, lng: 127.0350 }
+        ]
+      },
+      {
+        id: 'spot-9',
+        name: '서초 푸르지오 P2P 나눔 주차장',
+        vacancyCount: 1,
+        total: '공유 2면',
+        price: '₩1,200',
+        unit: '/ 1시간',
+        coupon: '첫 공유 이용 쿠폰',
+        tag: 'P2P 주말나눔',
+        walk: '도보 8분',
+        subtext: '서울 서초구 사임당로 143',
+        category: 'p2p',
+        position: { lat: 37.4925, lng: 127.0250 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4950, lng: 127.0260 },
+          { lat: 37.4925, lng: 127.0250 }
+        ]
+      },
+      {
+        id: 'spot-10',
+        name: '국기원길 노상 공영주차장',
+        vacancyCount: 5,
+        total: '총 20면',
+        price: '₩1,000',
+        unit: '/ 10분',
+        coupon: '주말/공휴일 무료',
+        tag: '공영 노상',
+        walk: '도보 5분',
+        subtext: '서울 강남구 테헤란로7길 32',
+        category: 'public',
+        position: { lat: 37.5010, lng: 127.0285 },
+        waypoints: [
+          { lat: 37.4979, lng: 127.0276 },
+          { lat: 37.4995, lng: 127.0280 },
+          { lat: 37.5010, lng: 127.0285 }
+        ]
+      }
+    ];
+
+    /* Global Map Variables */
+    let map = null;
+    let trafficLayer = null;
+    let showTraffic = false;
+    let showRoute = true;
+    let activeSpotId = 'spot-1';
+    let currentFilter = 'all';
+    let customOverlays = [];
+    let routePolylines = [];
+
+    /* Google Maps Custom HTML Marker Overlay Class */
+    function defineHTMLMarkerOverlay() {
+      if (window.HTMLMarkerOverlay) return;
+
+      window.HTMLMarkerOverlay = class extends google.maps.OverlayView {
+        constructor(position, html, onClick, spotId) {
+          super();
+          this.position = position;
+          this.html = html;
+          this.onClick = onClick;
+          this.spotId = spotId;
+          this.div = null;
+          this.setMap(map);
+        }
+
+        onAdd() {
+          this.div = document.createElement('div');
+          this.div.style.position = 'absolute';
+          this.div.style.cursor = 'pointer';
+          this.div.innerHTML = this.html;
+
+          this.div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.onClick) this.onClick(this.spotId);
+          });
+
+          const panes = this.getPanes();
+          panes.overlayMouseTarget.appendChild(this.div);
+        }
+
+        draw() {
+          const overlayProjection = this.getProjection();
+          if (!overlayProjection || !this.div) return;
+          const point = overlayProjection.fromLatLngToDivPixel(this.position);
+          if (point) {
+            this.div.style.left = (point.x - 45) + 'px';
+            this.div.style.top = (point.y - 35) + 'px';
+          }
+        }
+
+        onRemove() {
+          if (this.div && this.div.parentNode) {
+            this.div.parentNode.removeChild(this.div);
+            this.div = null;
+          }
+        }
+      };
+    }
+
+    /* Clear drawn street route lines */
+    function clearRouteLines() {
+      routePolylines.forEach(p => p.setMap(null));
+      routePolylines = [];
+    }
+
+    /* Draw smooth multi-point street path along real roads */
+    function drawRouteLine(spot) {
+      clearRouteLines();
+      if (!map || !spot) return;
+
+      let pathCoords = [];
+      
+      // API 오류 방지를 위해, 미리 정의된 상세 도로망 좌표(waypoints)를 사용하여 경로 생성
+      if (spot.waypoints) {
+        pathCoords = spot.waypoints.map(pt => new google.maps.LatLng(pt.lat, pt.lng));
+      } else {
+        pathCoords = [
+          new google.maps.LatLng(USER_LOCATION.lat, USER_LOCATION.lng),
+          new google.maps.LatLng(spot.position.lat, spot.position.lng)
+        ];
+      }
+
+      // Outer glowing polyline border
+      const borderLine = new google.maps.Polyline({
+        path: pathCoords,
+        geodesic: true,
+        strokeColor: '#1d4ed8',
+        strokeOpacity: 0.4,
+        strokeWeight: 9,
+        map: map
+      });
+
+      // Inner core polyline
+      const coreLine = new google.maps.Polyline({
+        path: pathCoords,
+        geodesic: true,
+        strokeColor: '#2563eb',
+        strokeOpacity: 0.95,
+        strokeWeight: 5,
+        map: map
+      });
+
+      routePolylines.push(borderLine, coreLine);
+    }
+
+    /* Initialize Google Map callback */
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('google-map-canvas'), {
+        center: USER_LOCATION,
+        zoom: 15,
+        disableDefaultUI: true,
+        zoomControl: false,
+        styles: [
+          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+          { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] }
+        ]
+      });
+
+      trafficLayer = new google.maps.TrafficLayer();
+      defineHTMLMarkerOverlay();
+
+      // Render User Current Location Pulse Marker
+      new window.HTMLMarkerOverlay(
+        new google.maps.LatLng(USER_LOCATION.lat, USER_LOCATION.lng),
+        `
+        <div class="relative flex items-center justify-center w-10 h-10">
+          <div class="absolute w-10 h-10 rounded-full bg-blue-500/30 sonar-ring"></div>
+          <div class="w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center">
+            <div class="w-2 h-2 rounded-full bg-white"></div>
+          </div>
+        </div>
+        `,
+        null,
+        'user-location'
+      );
+
+      renderParkingMarkers();
+      selectSpot('spot-1');
+    }
+
+    function renderParkingMarkers() {
+      parkingSpots.forEach(spot => {
+        // Strict Rule: >10 seats is Green (여유), <=10 seats is Red (혼잡)
+        const isCongested = spot.vacancyCount <= 10;
+        spot.badgeBg = isCongested ? 'bg-rose-600 border-rose-300' : 'bg-emerald-600 border-emerald-300';
+        spot.pinColor = isCongested ? 'bg-rose-600' : 'bg-emerald-600';
+        spot.vacancy = isCongested ? `혼잡 ${spot.vacancyCount}석` : `여유 ${spot.vacancyCount}석`;
+
+        const isActive = spot.id === activeSpotId;
+        const html = `
+          <div id="marker-${spot.id}" class="marker-box flex flex-col items-center">
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full ${spot.badgeBg} text-white font-black text-xs shadow-xl border ${isActive ? 'marker-active-bounce ring-4 ring-blue-500/50' : 'hover:scale-105 transition-transform'}">
+              ${spot.id === 'spot-1' ? '<span class="material-symbols-outlined text-[14px] text-amber-300">star</span>' : ''}
+              <span>${spot.vacancy} · ${spot.price}</span>
+            </div>
+            <div class="w-3 h-2.5 ${spot.pinColor} [clip-path:polygon(0_0,100%_0,50%_100%)] shadow-md -mt-0.5"></div>
+          </div>
+        `;
+
+        const overlay = new window.HTMLMarkerOverlay(
+          new google.maps.LatLng(spot.position.lat, spot.position.lng),
+          html,
+          (id) => selectSpot(id),
+          spot.id
+        );
+
+        customOverlays.push({ spotId: spot.id, overlay: overlay, spot: spot });
+      });
+    }
+
+    function selectSpot(spotId) {
+      activeSpotId = spotId;
+      const spot = parkingSpots.find(s => s.id === spotId);
+      if (!spot) return;
+
+      const isCongested = spot.vacancyCount <= 10;
+
+      // Update Custom Overlay Pins visually
+      customOverlays.forEach(item => {
+        const el = document.getElementById(`marker-${item.spotId}`);
+        if (!el) return;
+
+        const itemCongested = item.spot.vacancyCount <= 10;
+        const bgClass = itemCongested ? 'bg-rose-600 border-rose-300' : 'bg-emerald-600 border-emerald-300';
+        const pinBg = itemCongested ? 'bg-rose-600' : 'bg-emerald-600';
+
+        if (item.spotId === spotId) {
+          el.firstElementChild.className = `flex items-center gap-1.5 px-3 py-1.5 rounded-full ${bgClass} text-white font-black text-xs shadow-xl border ring-4 ring-blue-500/50 marker-active-bounce`;
+          if (el.children[1]) el.children[1].className = `w-3 h-2.5 ${pinBg} [clip-path:polygon(0_0,100%_0,50%_100%)] shadow-md -mt-0.5`;
+        } else {
+          el.firstElementChild.className = `flex items-center gap-1.5 px-3 py-1.5 rounded-full ${bgClass} text-white font-bold text-xs shadow-lg border hover:scale-105 transition-transform`;
+          if (el.children[1]) el.children[1].className = `w-3 h-2.5 ${pinBg} [clip-path:polygon(0_0,100%_0,50%_100%)] shadow-md -mt-0.5`;
+        }
+      });
+
+      // Pan Google Map smoothly
+      if (map) {
+        map.panTo(spot.position);
+      }
+
+      // Draw street route on Google Maps
+      if (showRoute) {
+        drawRouteLine(spot);
+      } else {
+        clearRouteLines();
+      }
+
+      // Update Bottom Drawer Card Text
+      document.getElementById('card-title').innerText = spot.name;
+      document.getElementById('card-tag').innerText = spot.tag;
+      document.getElementById('card-walk').innerText = spot.walk;
+      document.getElementById('card-subtext').innerText = spot.subtext;
+      document.getElementById('card-vacancy').innerText = spot.vacancy;
+      document.getElementById('card-total').innerText = spot.total;
+      document.getElementById('card-price').innerText = spot.price;
+      document.getElementById('card-unit').innerText = spot.unit;
+      document.getElementById('card-coupon').innerText = spot.coupon;
+
+      // Dynamic Card Status Badge Colors (Rose for Congested <=10, Emerald for Available >10)
+      const badgeBox = document.getElementById('vacancy-badge-box');
+      const vacancyText = document.getElementById('card-vacancy');
+      const totalText = document.getElementById('card-total');
+      if (badgeBox) {
+        if (isCongested) {
+          badgeBox.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-50 border border-rose-200 shrink-0';
+          if (vacancyText) vacancyText.className = 'text-xs text-rose-700 font-extrabold leading-tight';
+          if (totalText) totalText.className = 'text-[10px] text-rose-600 font-medium leading-none';
+          const ping = badgeBox.querySelector('.animate-ping');
+          if (ping) ping.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75';
+          const dot = badgeBox.querySelector('.relative.inline-flex');
+          if (dot) dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500';
+        } else {
+          badgeBox.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 shrink-0';
+          if (vacancyText) vacancyText.className = 'text-xs text-emerald-700 font-extrabold leading-tight';
+          if (totalText) totalText.className = 'text-[10px] text-emerald-600 font-medium leading-none';
+          const ping = badgeBox.querySelector('.animate-ping');
+          if (ping) ping.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+          const dot = badgeBox.querySelector('.relative.inline-flex');
+          if (dot) dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+        }
+      }
+
+      const p2Title = document.getElementById('page2-title');
+      if (p2Title) p2Title.innerHTML = `${spot.name} <span class="material-symbols-outlined text-[18px] text-blue-600">verified</span>`;
+    }
+
+    /* Filter Chips Toggle Logic */
+    function setFilter(filterType, btn) {
+      currentFilter = filterType;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = "filter-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-slate-700 text-xs font-medium shadow-sm border border-slate-200 whitespace-nowrap active:scale-95 transition-all hover:bg-slate-50";
+      });
+      btn.className = "filter-btn active-chip flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all";
+
+      customOverlays.forEach(item => {
+        let visible = true;
+        if (filterType === 'available' && item.spot.vacancyCount <= 10) visible = false;
+        if (filterType === 'congested' && item.spot.vacancyCount > 10) visible = false;
+        if (filterType === 'p2p' && item.spot.category !== 'p2p') visible = false;
+        if (filterType === 'public' && item.spot.category !== 'public') visible = false;
+
+        const el = document.getElementById(`marker-${item.spotId}`);
+        if (el) {
+          el.style.display = visible ? 'flex' : 'none';
+        }
+      });
+    }
+
+    /* Map Controls Helpers */
+    function toggleTrafficLayer() {
+      showTraffic = !showTraffic;
+      const btn = document.getElementById('traffic-btn');
+
+      if (showTraffic) {
+        trafficLayer.setMap(map);
+        btn.className = "px-2.5 py-1 rounded-xl bg-slate-900 text-white shadow-xl text-[11px] font-bold border border-slate-800 transition-all";
+        btn.innerText = "교통정보 ON";
+      } else {
+        trafficLayer.setMap(null);
+        btn.className = "px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md shadow-xl text-[11px] font-bold text-slate-700 border border-slate-200/80 transition-all";
+        btn.innerText = "교통정보 OFF";
+      }
+    }
+
+    function toggleRouteLine() {
+      showRoute = !showRoute;
+      const btn = document.getElementById('route-btn');
+
+      if (showRoute) {
+        selectSpot(activeSpotId);
+        btn.className = "px-2.5 py-1 rounded-xl bg-blue-600 text-white shadow-xl text-[11px] font-bold border border-blue-500 transition-all";
+      } else {
+        clearRouteLines();
+        btn.className = "px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md shadow-xl text-[11px] font-bold text-slate-700 border border-slate-200/80 transition-all";
+      }
+    }
+
+    function recenterLocation() {
+      const icon = document.getElementById('gps-icon');
+      if (icon) icon.classList.add('animate-spin');
+
+      if (map) {
+        map.panTo(USER_LOCATION);
+        map.setZoom(15);
+      }
+
+      setTimeout(() => {
+        selectSpot('spot-1');
+        if (icon) icon.classList.remove('animate-spin');
+      }, 400);
+    }
+
+    function handleSearch(e) {
+      e.preventDefault();
+      const input = document.getElementById('map-search-input');
+      const query = input.value.trim();
+      if (!query) return;
+
+      const match = parkingSpots.find(s => s.name.includes(query) || query.includes('강남') || query.includes('역삼') || query.includes('신논현'));
+      if (match) {
+        selectSpot(match.id);
+      } else {
+        recenterLocation();
+      }
+    }
+
+    /* Tab Navigation */
+    function navigateToPage(pageId) {
+      document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+      const targetPage = document.getElementById(pageId);
+      if (targetPage) {
+        targetPage.classList.add('active');
+      }
+
+      const subtitleEl = document.getElementById('header-subtitle');
+      if (subtitleEl && subtitles[pageId]) {
+        subtitleEl.innerText = subtitles[pageId];
+      }
+
+      document.querySelectorAll('nav a').forEach(link => {
+        if (link.getAttribute('data-page') === pageId) {
+          link.className = "group flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors text-blue-600";
+        } else {
+          link.className = "group flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-500 hover:text-slate-900 transition-colors";
+        }
+      });
+
+      window.scrollTo(0, 0);
+    }
+
+    function selectSlot(code, title) {
+      const titleEl = document.getElementById('selected-spot-title');
+      if (titleEl) titleEl.innerText = title;
+    }
+
+    window.addEventListener('load', () => {
+      const hash = location.hash.replace('#', '');
+      if (hash && ['page1', 'page2', 'page3', 'page4'].includes(hash)) {
+        navigateToPage(hash);
+      } else {
+        navigateToPage('page1');
+      }
+    });
+  </script>
+</body>
+</html>
